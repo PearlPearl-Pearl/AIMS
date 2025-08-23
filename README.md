@@ -8,3 +8,7 @@ Each phase is divided into `blocks` of 3 weeks, where a minimum of 2 courses are
 
 Students enrolled into AIMS Rwanda are required to go through a compulsory 4 week pre-resumption phase in order to get them up to speed and brush up on their skills in Mathematics and Python.
 
+
+### PS
+This `README` will be updated as I go through the program with relevant information on the materials in the folders. A final update would be made to this document on the last day of the program.🔥🔥
+So help me God!❤🚀🎯.
