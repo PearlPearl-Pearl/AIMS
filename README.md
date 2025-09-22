@@ -21,6 +21,9 @@ The aim of this course is to build on the skills already learned, and apply them
 
 This course is taken to build students' confidence in LaTeX (a typesetting tool for mathematicians), and other essential skills like shell scripting and R programming language.
 
+
+#### Block 2
+- **[Physical Problem Solving](skill_phase/block_2/PPS/)**
 ---
 
 ### PS
