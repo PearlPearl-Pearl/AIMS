@@ -3,7 +3,7 @@ skill_phase/block_3
 preresumption/math_geometric_cheatsheet.pdf
 aims_assignment_template.*
 skill_phase/block_1/ICL/bash/day2_nc
-skill_phase/block_1/ICL/bash/*_ICL1
+skill_phase/block_1/ICL/bash/*.sh
 skill_phase/block_1/ICL/R/Assignment2.Rmd
 skill_phase/block_1/ICL/R/Intro_R.*
 skill_phase/block_1/ICL/R/*_ICL2.*
@@ -14,3 +14,4 @@ skill_phase/block_1/MPS/week1/*.jpg
 skill_phase/block_1/MPS/week2/*_MPS2.pdf
 skill_phase/block_1/MPS/week3
 skill_phase/block_2/PPS/text
+skill_phase/block_2/PPS/week1/ppsolv1.pdf
