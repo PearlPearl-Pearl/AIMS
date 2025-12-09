@@ -326,8 +326,8 @@ mae_val  <- mae(test_actuals, test_preds)
 r2_val   <- cor(test_actuals, test_preds)^2 
 
 test_metrics <- data.frame(
-  Metric = c("RMSE", "MAE", "R-squared", "Accuracy"),
-  Value  = c(rmse_val, mae_val, r2_val, accuracy)
+  Metric = c("RMSE", "MAE", "R-squared"),
+  Value  = c(rmse_val, mae_val, r2_val)
 )
 
 knitr::kable(test_metrics, digits = 3, 
@@ -335,7 +335,7 @@ knitr::kable(test_metrics, digits = 3,
 
 ```
 
-On the test set, the AIC-selected model performs quite well. The RMSE of 6.78 shows that predicted house prices typically differ from the actual prices by about 6.8 units, while the MAE of 4.84 indicates that the average error is slightly smaller. With an $R^2$ of 0.70, the model captures roughly $70\%$ of the variation in house prices, which is good enough for this kind of data. Additionally, the accuracy of $52\%$, with a tolerance of 0.1, demonstrates that the model is both reliable and practically useful.
+On the test set, the AIC-selected model performs quite well. The RMSE of 6.78 shows that predicted house prices typically differ from the actual prices by about 6.8 units, while the MAE of 4.84 indicates that the average error is slightly smaller. With an $R^2$ of 0.70, the model captures roughly $70\%$ of the variation in house prices, which is good enough for this kind of data.
 
 
 ### Wheel 8: Statistical Inference and Theoretical Justification
@@ -1286,7 +1286,116 @@ kable(head(df_pairs, 10), caption = "First 10 (x, y) pairs")
 plot(x, y, main="Scatter plot of Y against X")
 ```
 
-The scatter plot shows a clear curved pattern, where $Y$ increases and decreases smoothly as $X$ varies. This aligns with the theoretical conditional mean, a sinusoidal function rather than a straight line. Although the individual points are scattered because of noise, the overall trend is visibly nonlinear, suggesting that a simple linear regression would not capture the true relationship between $X$ and $Y$.
+The scatter plot shows a clear curved pattern, where $Y$ increases and decreases smoothly as $X$ varies. This aligns with the theoretical conditional mean, a sinusoidal function rather than a straight line. Although the individual points are scattered because of noise, the overall trend is visibly nonlinear but some parts of the plot look linear (from x=1 to x=3). This indicates that a linear combination of possibly linear and sinusoidal functions will accurately capture the trend in this data.
 
 ### Question 4: Regression Analysis and Bayes Risk
+
+Consider using regression analysis learning machines to learn the true function underlying the generated dataset. The loss function to be used is $$\ell(Y, f(X)) = (Y-f(X))^2$$ with the corresponding functional risk $$R(f) = \mathbb{E}[\ell(Y, f(X))] = \int_{\mathcal{X}\times\mathcal{Y}}\ell(y, f(x))p_{XY}(x,y)dxdy$$
+
+
+a. We want to find the expression of $$f^{*}(X) = \operatorname{argmin}\limits_{f}\mathbb{E}[\ell(Y, f(X))]$$
+
+but notice that this is given by $$\underset{f}{\operatorname{argmin}}\mathbb{E}[\ell(Y, f(X))] = \underset{f}{\operatorname{argmin}}\mathbb{E}[\ell(Y, f(X))] = \underset{f}{\operatorname{argmin}}\int_{\mathcal{X}\times\mathcal{Y}}\ell(y, f(x))p_{XY}(x,y)dxdy$$
+
+which becomes
+\[
+\underset{f}{\operatorname{argmin}}\int_{\mathcal{X}\times\mathcal{Y}}\ell(y, f(x))p_{XY}(x,y)dxdy
+= \underset{f}{\mathrm{arg\,min}}\; \int_{\mathcal X}\int_{\mathcal Y} (y-f(x))^2 p_{XY}(x,y)\,dy\,dx.
+\]
+By differentiating with respect to $x$ we get the above becomes
+\[
+\underset{a\in\mathbb R}{\mathrm{arg\,min}}\; \int_{\mathcal Y} (y-a)^2 p_{Y\mid X}(y\mid x)\,dy,
+\]
+which implies that \(a=\mathbb{E}[Y\mid X=x]\). Hence
+\[
+\,f^*(x)=\mathbb{E}[Y\mid X=x]\,
+\]
+and for our model
+\[
+f^*(x)=\frac{\pi}{2}x + \frac{3\pi}{4}\cos\!\Big(\tfrac{\pi}{2}(1+x)\Big).
+\]
+
+b. The Bayes risk equals the expected conditional variance which from the previous question we see is given as:
+\[
+\,R^*=\mathbb{E}[\operatorname{Var}(Y\mid X)] = \frac{9}{\pi^2} .
+\]
+
+
+
+c. 
+```{r warning=FALSE, message=FALSE, echo=FALSE}
+library(FNN)
+library(rpart)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+set.seed(123)
+
+f_true <- function(x){
+  (pi/2)*x + (3*pi/4)*cos( (pi/2)*(1 + x) )
+}
+
+sigma2 <- 9/pi^2
+R_star <- sigma2
+
+
+n <- 300
+x_all <- runif(n, min = -1, max = 1)
+y_all <- f_true(x_all) + rnorm(n, sd = sqrt(sigma2))
+
+B <- 100
+
+results <- data.frame(
+  knn = numeric(B),
+  lin = numeric(B),
+  poly = numeric(B),
+  tree = numeric(B)
+)
+
+for(b in 1:B){
+
+  idx <- sample(1:n, size = floor(0.6*n))
+  x_train <- x_all[idx]
+  y_train <- y_all[idx]
+  x_test  <- x_all[-idx]
+  y_test  <- y_all[-idx]
+
+  knn_fit <- knn.reg(train = matrix(x_train, ncol = 1),
+                     test  = matrix(x_test, ncol = 1),
+                     y = y_train, k = 10)   
+  results$knn[b] <- mean((y_test - knn_fit$pred)^2)
+
+  lin_fit <- lm(y_train ~ x_train)
+  lin_pred <- predict(lin_fit, newdata = data.frame(x_train = x_test))
+  results$lin[b] <- mean((y_test - lin_pred)^2)
+
+  poly_fit <- lm(y_train ~ poly(x_train, 3, raw = TRUE))
+  poly_pred <- predict(poly_fit, newdata = data.frame(x_train = x_test))
+  results$poly[b] <- mean((y_test - poly_pred)^2)
+
+  tree_fit <- rpart(y_train ~ x_train, method = "anova")
+  tree_pred <- predict(tree_fit, newdata = data.frame(x_train = x_test))
+  results$tree[b] <- mean((y_test - tree_pred)^2)
+
+}
+
+df_long <- results %>%
+  pivot_longer(cols = everything(),
+               names_to = "Method",
+               values_to = "Test_MSE")
+
+ggplot(df_long, aes(x = Method, y = Test_MSE, fill = Method)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_hline(yintercept = R_star, linetype = "dashed", size = 1) +
+  labs(title = "Comparison of Test MSE over 100 Replications",
+       subtitle = paste("Dashed line = Bayes Risk R* =", round(R_star, 3)),
+       y = "Test MSE") +
+  theme_minimal()
+
+```
+
+
+
+This simulation shows significant differences in performance among the tested regression models. Our benchmark is the **Bayes Risk ($R^*$)**, which is the absolute theoretical minimum achievable test error for this problem, calculated as $R^* \approx 0.912$.
 
