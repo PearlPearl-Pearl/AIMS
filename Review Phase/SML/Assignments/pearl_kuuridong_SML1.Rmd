@@ -13,36 +13,33 @@ header-includes:
 
 The real estate market plays a key role in any economy, as it reflects the combined effects of demographics, the economy, and location. Knowing the likely price of a house is important, not just for buyers and sellers trying to make fair deals, but also for policymakers and city planners who want to support sustainable and accessible housing. Many factors can affect house prices. For example, the age and condition of a property, how close it is to public transport or shops, the local economy, and the neighborhood itself all make a difference. Houses near transit stations or popular commercial areas usually sell for more, while older houses or those in less convenient locations tend to be cheaper. In Taiwan, fast urban growth and high population density make reliable property valuations even more important. By looking at things like demographics, location, and economic indicators, it is possible to estimate house prices more accurately. These estimates can help everyone, from homebuyers to government officials, make better decisions about real estate.
 
-Building on this, our project aims to develop a system that predicts house prices per unit area for properties in a district in Taiwan. The system will use key features such as the age of the house, proximity to the nearest MRT station, the number of nearby convenience stores, and the geographic coordinates of the property. These features are particularly important because they capture the factors that most strongly influence a property’s value: house age reflects its condition and potential maintenance costs, proximity to public transport affects accessibility and convenience, nearby amenities indicate how desired the area is, and geographic location captures broader neighborhood effects that might not be visible from other data alone. By focusing on these features, we can build a model that provides accurate, continuous-valued price estimates to support informed decisions in the housing market.
+Building on this, this project aims to develop a system that predicts house prices per unit area for properties in a district in Taiwan. The system will use key features such as the age of the house, proximity to the nearest MRT station, the number of nearby convenience stores, and the geographic coordinates of the property. These features are particularly important because they capture the factors that most strongly influence a property’s value: house age reflects its condition and potential maintenance costs, proximity to public transport affects accessibility and convenience, nearby amenities indicate how desired the area is, and geographic location captures broader neighborhood effects that might not be visible from other data alone. By focusing on these features, we can build a model that provides accurate, continuous-valued price estimates to support informed decisions in the housing market.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 library(readxl)
 
-url <- "https://archive.ics.uci.edu/ml/machine-learning-databases/00477/Real%20estate%20valuation%20data%20set.xlsx"
-
-temp <- tempfile(fileext = ".xlsx")
-download.file(url, temp, mode = "wb")
-
-real_estate <- read_excel(temp)
-
+# url <- "https://archive.ics.uci.edu/ml/machine-learning-databases/00477/Real%20estate%20valuation%20data%20set.xlsx"
+# 
+# temp <- tempfile(fileext = ".xlsx")
+# download.file(url, temp, mode = "wb")
+# 
+# real_estate <- read_excel(temp)
+real_estate <- read_xlsx("Real estate valuation data set.xlsx")
 real_estate <- real_estate[,-1]
 colnames(real_estate) <- c("Date", "Age", "MRT_distance", "Convenience", "Latitude", "Longitude", "Price")
 ```
 
 ### Wheel 1: Clear Problem Choice and Formulation
 
-**Specific Choice/Action:**  
-We formulate the task as a regression problem, where the goal is to predict $$Y = \text{house price per unit area} \in [\text{`r min(real_estate$Price)`}, \text{`r max(real_estate$Price)`}]$$.
+We formulate the task as a regression problem, where the goal is to predict 
+$$Y = \text{house price per unit area} \in [\text{`r min(real_estate$Price)`}, \text{`r max(real_estate$Price)`}]\subset \mathbb{R}.$$
 
+given a feature vector $$x = (\text{Date, Age, MRT\_distance, Convenience, Latitude, Longitude}) \in \mathbb{R}^6.$$
 
-given a feature vector $$x = (\text{transaction date, house age, distance to MRT station, number of convenience stores, latitude, longitude}).$$
-
-**Thorough Justification:**  
-The target variable (Price) is continuous, making regression the natural choice. Regression captures housing price details, allowing more accurate estimates for everyone. Predictions are expected to lie roughly within the range of observed prices in the dataset, though the model could, in principle, produce values outside this range. This makes a regression formulation the most natural thing to choose.
+The output space $\mathscr{Y} = \mathbb{R}$ is continuous, making regression the natural choice. Predictions are expected to lie roughly within the range of observed prices in the dataset, though the model could, in principle, produce values outside this range. This makes a regression formulation the most natural thing to choose.
 
 ### Wheel 2: Data Collection and Exploration
 
-**Specific Choice/Action:**  
 We use the public dataset from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/machine-learning-databases/00477/Real%20estate%20valuation%20data%20set.xlsx).  
 It contains `r nrow(real_estate)` observations and `r ncol(real_estate)-1` attributes, including transaction date, house age, distance to the nearest MRT station, number of convenience stores, latitude, longitude, and house price per unit area. These features form our input space, $\mathscr{X}=\mathbb{R}^6$, with dimension `r ncol(real_estate)-1`. The index $\kappa =$ `r nrow(real_estate)/(ncol(real_estate)-1)` indicates our dataset is an overdetermined system thus indicating stability of the regression estimates. The output space, $\mathscr{Y}$ is a subset of the real line $\mathbb{R}$
 
@@ -53,7 +50,6 @@ We will perform the following exploratory data analysis (EDA) steps:
 3. Examine pairwise correlations to identify multicollinearity.
 4. Visualize relationships between features and the target variable using scatterplots and boxplots.
 
-**Thorough Justification:** 
 The UCI repository is useful in the situation since it contains historical data on house prices, readily available with all the necessary features. Exploring the data is essential for understanding patterns, identifying outliers, and guiding model selection. Correlation analysis helps detect multicollinearity, which can affect model stability in linear regression. Proper EDA ensures that our model is grounded in the structure of the data and that any preprocessing or feature engineering decisions are well-informed.
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE}
@@ -99,9 +95,9 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor = 1.2, ...) {
 
 ```
 #### Brief intepretation:
-The dataset contains 414 observations per variable (no missing values) with six input features and the target variable, `house price per unit area`. The features are type homogeneous but scale heterogeneous. For example, the distance to the nearest MRT station ranges from about 23 to over 6,400 meters, while the number of nearby convenience stores goes from 0 to 10. Even though latitude and longitude change only slightly, they can still affect property prices. Comparing the mean and median values shows some skewness in certain features, especially MRT distance and house price, suggesting the presence of outliers or extreme values.
+The dataset contains 414 observations per variable (no missing values) with six input features and the target variable, `Price`. The features are type homogeneous but scale heterogeneous. For example, the distance to the nearest MRT station ranges from about 23 to over 6,400 meters, while the number of nearby convenience stores goes from 0 to 10. Even though latitude and longitude change only slightly, they can still affect property prices. Comparing the mean and median values shows some skewness in certain features, especially MRT distance and house price, suggesting the presence of outliers or extreme values.
 
-For the regression task, this means a few things. The features may need to be scaled so that differences in units don’t skew the model. Handling outliers or using robust regression methods could improve stability. Distance and location features might also benefit from transformations, such as taking the logarithm, to better capture their impact on house prices.
+For the regression task, this means a few things. The features may need to be scaled so that differences in units don’t skew the model. Handling outliers could improve stability. Distance and location features might also benefit from transformations, such as taking the logarithm, to better capture their impact on house prices.
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 pairs(numeric_vars,
@@ -115,7 +111,7 @@ pairs(numeric_vars,
 #### Brief intepretation:
 The correlation analysis shows that some features have stronger relationships with house `Price` than others. In particular, `MRT_distance` is negatively correlated with price (around -0.67), meaning houses closer to MRT stations tend to be more expensive. `Convenience`, `Latitude`, and `Longitude` show moderate positive correlations with price, suggesting that location and nearby amenities contribute to higher values. Other features, like `Date` and `Age`, show weaker correlations, indicating a smaller direct effect on `Price`.
 
-The scatterplots reveal some non-linear patterns, especially for `MRT_distance` and `Convenience`, and potential outliers are visible in several variables. This suggests that some feature engineering could improve model performance. For instance, log-transforming distances, creating interaction terms between location features, or encoding spatial information more effectively. Scaling features will also help since the variables are on very different ranges.
+The scatterplots reveal some non-linear patterns, especially for `MRT_distance` and `Convenience`, and potential outliers are visible in several variables. This suggests that some feature engineering could improve model performance. For instance, log-transforming distances, creating interaction terms between location features, or considering powers of some variables (like `Age`).
 
 ```{r warning=FALSE, message=FALSE, echo=FALSE}
 library(tidyr)
@@ -147,12 +143,12 @@ ggplot(numeric_long, aes(y = Value, x = "")) +
 ```
 
 ### Brief Interpretation:
-The boxplots support what we already noticed from the correlation analysis. Location and accessibility features don’t vary much, but even those small differences still reflect meaningful neighbourhood patterns. In contrast, features like Age and MRT distance spread out more and show clear outliers. Price is also right-skewed, with a few properties selling for much more than the rest. Overall, the distributions suggest that scaling the features and being mindful of outliers will help the model, but the dataset remains clean and very suitable for regression.
+The boxplots support what we already noticed from the correlation analysis. Location and accessibility features don’t vary much. In contrast, features like Age and MRT distance spread out more and show clear outliers. Price is also right-skewed, with a few properties selling for much more than the rest. Overall, the distributions suggest that scaling the features and being mindful of outliers will help the model, but the dataset remains clean and very suitable for regression.
 
 
 ### Wheel 3: Hypothesis Space
 
-In statistical learning, the hypothesis space \( \mathscr{H} \) specifies the set of functions the learning machine is allowed to search over. This choice determines the bias–variance tradeoff: simpler spaces give stable models which are more likely to underfit, while richer spaces offer flexibility at the cost of higher variance. Guided by this principle and based on the information from the scatter plots, I restrict my hypothesis space to three classes of regression functions for predicting house prices.
+Based on the analysis from the previous wheel, I restrict my hypothesis space to three classes of regression functions for predicting house prices.
 
 
 ###### 1. Linear Regression Class \( \mathscr{H}_{\text{lin}} \)
@@ -168,50 +164,235 @@ This space corresponds to classical linear regression. It is high-bias but low-v
 \mathscr{H}_{\text{poly}}
 = \mathscr{H}_{\text{lin}}
 \;\cup\;
-\{\, \gamma_1\,\text{Age}^2 + \gamma_2\,\text{MRT\_distance}^2 \,\}.
+\{\, \gamma_1\,\text{Age}^2\}.
+\]
+
+###### 2. Lograithmic Class \( \mathscr{H}_{\text{poly}} \) 
+\[
+\mathscr{H}_{\text{log}}
+= \mathscr{H}_{\text{poly}}
+\;\cup\;
+\{\, \gamma_2\,\log\text{MRT\_distance}\}.
 \]
 
 This choice of functions is based on the patterns observed in the scatter plots. Some curvature is obvious in the plots of `Price` against each of `Age` and `MRT_distance` even though some parts of the relationship with `Age` looks linear.
 
 
-
-This structured progression aligns with the Wheel 3 philosophy: choose a model space that is “as simple as possible, but not simpler.” It enables systematic comparison in later wheels and maintains interpretability, which is essential in real estate valuation.
-
-
 ### Wheel 4: Principle of Learning and Criteria
 
-Now that we have picked our $\mathscr{H}$ in Wheel 3, the next thing to look at is how to pick the "best" function out of that space? In statistical learning, the answer for a regression task is Empirical Risk Minimization, or ERM for short. Since we do not know the true distribution from which our dataset is sampled, we cannot directly compute the true risk, given by \[
+Since the chosen hypothesis space suggests that the model is linear in the paramters, then Ordinary Least Squares is still a valid principle of learning. Since we do not know the true distribution from which our dataset is sampled, we cannot directly compute the true risk, given by \[
 R(f) = \mathbb{E}_{(X,Y)\sim p} \left[ (Y - f(X))^2 \right],
-\] of any model. What the Learning Principle does is to use the data and then calculate the average error over all these values in the dataset. Our best learning machine is the one that makes this empirical risk as small as possible. Mathematically this empirical risk is given by 
+\] of any model. Our best learning machine is the one that makes the empirical risk as small as possible. Mathematically this empirical risk is given by 
 
 \[
 R_n(f) = \frac{1}{n}\sum_{i=1}^n (y_i - f(x_i))^2.
 \]
 
-In context the Empirical Risk Minimization is just taking the learning machine whose predictions are as close as is allowed (without overfitting) to the true values. The squared error loss is used here due to the fact that for this loss function larger mistakes are penalized more heavily than smaller ones, ensuring that the model focuses on avoiding big mispredictions. Additionally since the squared error loss is differentiable everywhere then the computations related to finding the best learning machine using this loss function become easier to handle. 
+In context the Empirical Risk Minimization is just taking the learning machine whose predictions are as close as possible (without overfitting) to the true values. The squared error loss is used here due to the fact that for this loss function larger mistakes are penalized more heavily than smaller ones, ensuring that the model focuses on avoiding big mispredictions. Additionally since the squared error loss is differentiable everywhere then the computations related to finding the best learning machine using this loss function become easier to handle. 
 
 ### Wheel 5: Algorithmic and Computational Optimization
 
+Since the chosen function space inherently suggests linearity in the parameters, then some possibiliites for an algorithm include the `Ordinary Least Squares(OLS)` optimization, `Maximum Likelihood Estimation(MLE)`, and `Bayesian Learning`. In this case an assumption of the independence of the error terms and constant variance among these error terms in turn means that the `MLE` and `OLS` estimates will coincide.
+
+In the case of Bayesian Linear Regression, it requires that prior distributions are placed on regression coefficients. I do not have enough domain knowledge that would justify valid priors, and using non-informative priors would essentially reduce the method to a more complex version of `OLS`. In that regard I proceed with the `OLS`/`MLE` algorithm. Theoretically, this choice of algorithm is sound since the estimates of the parameters from `OLS` are unbiased.
+
+The table below gives a summary of the estimates of the parameters using the OLS algorithm.
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
+real_estate$sqAge <- (real_estate$Age)^2
+real_estate$logMRT <- (log(real_estate$MRT_distance))
+real_estate$longlat <- (real_estate$Longitude*real_estate$Latitude)
+
+
+library(caret)
+
+
+set.seed(123)
+
+
+train_index <- createDataPartition(real_estate$Price, p = 0.8, list = FALSE)
+train_data <- real_estate[train_index, ]
+test_data  <- real_estate[-train_index, ]
+
+model <- lm(Price ~ ., data = train_data)
+
+# summary(model)
+
+
+library(broom)
+library(knitr)
+
+tidy_model <- broom::tidy(model)
+
+knitr::kable(
+  tidy_model,
+  digits = 4,
+  col.names = c("Term", "Estimate", "Std. Error", "t value", "p value"),
+  caption = "OLS estimates using all variables \\footnotesize p-values of 0 mean the p-values are very small and not actually 0"
+)
 ```
+
+The significant predictors in the model; `Date`, `Age`, `Convenience`, `Latitude`, `sqAge` (the square of the `Age` variable), and `logMRT` (the log of the MRT_distance) all have p-values below 0.05, indicating they meaningfully influence house prices. Looking at the direction of their effects, older properties and higher `logMRT` values tend to lower the `Price`, while bought later, those with higher `Convenience`, larger `Latitude`, and the squared `Age` positively impact the `Price`. On the other hand, `MRT_distance`, `Longitude`, and `longlat` (interaction term between latitude and longitude) do not appear to contribute significantly, with `longlat` being dropped due to multicollinearity.
+
+
 
 ### Wheel 6: Regularization and Refinement
 
+Based on the estimates displayed in the table in the previous wheel, it is observed that some estimates are not contributing much to the model itself. In that regard I proceed by using the Akaike Information Criterion (AIC) for stepwise model selection. AIC provides a balance between model fit and complexity, penalizing unnecessary predictors while rewarding improved explanatory power. This approach helps refine the model, ensuring that only the most relevant features are retained before evaluating its generalization performance. After I use k-fold cross validation to assess the generalizability of the model. This ensures that the model selected by AIC performs well on unseen data and is not just overfitting. The reason for using k-fold and not `Leave One Out Cross Validation` (LOOCV) is to avoid a  high computational complexity. Additionally I want to avoid a high variance in error estimates. 10-fold cross-validation provides a good balance between bias, variance, and computation efficiency, allowing us to reliably estimate the model’s generalization performance on unseen data.
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
+step_model <- step(model, direction = "backward", trace = FALSE)
+
+# summary(step_model)
+tidy_step_model <- broom::tidy(step_model)
+
+tidy_step_model <- tidy_step_model %>%
+  mutate(Significance = case_when(
+    p.value < 0.001 ~ "***",
+    p.value < 0.01  ~ "**",
+    p.value < 0.05  ~ "*",
+    p.value < 0.1   ~ ".",
+    TRUE            ~ ""
+  ))
+
+step_model <- step(model, direction = "backward", trace = FALSE)
+
+# summary(step_model)
+tidy_step_model <- broom::tidy(step_model)
+
+tidy_step_model <- tidy_step_model %>%
+  mutate(Significance = case_when(
+    p.value < 0.001 ~ "***",
+    p.value < 0.01  ~ "**",
+    p.value < 0.05  ~ "*",
+    p.value < 0.1   ~ ".",
+    TRUE            ~ ""
+  ))
+
+model_aic <- round(AIC(step_model), 2)
+
+knitr::kable(
+  tidy_step_model %>% select(term, estimate, std.error, statistic, p.value, Significance),
+  digits = 4,
+  col.names = c("Term", "Estimate", "Std. Error", "t value", "p value", "Significance"),
+  caption = paste0("Coefficients and Significance of the AIC-Selected Model (AIC = ", model_aic, "). \\footnotesize p-values of 0 mean the p-values are very small and not actually 0")
+)
 ```
+
+Based on the AIC stepwise selection, the model retained six predictors: `Date`, `Age`, `Convenience`, `Latitude`, `sqAge`, and `logMRT.` Indicating that per the AIC these variables are the ones that capture the variability in `Price` without increasing the model complexity with `Age` and `logMRT` decreasing price,  while `Date`, `Convenience`, `Latitude`, and `sqAge` increase it. The AIC decreased from `r round(AIC(model), 2)` in the full model to `r round(AIC(step_model), 2)` in the selected model, indicating an improved balance between model fit and complexity. Predictors removed by the procedure, such as Longitude and MRT_distance, were deemed non-essential, resulting in a simpler and more interpretable model.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+train_control <- trainControl(method = "cv", number = 10)
+
+cv_model <- train(
+  formula(step_model),
+  data = train_data,
+  method = "lm",
+  trControl = train_control
+)
+cv_results <- cv_model$results
+cv_table <- t(cv_results[-1])
+
+rownames(cv_table) <- c("RMSE", "Rsquared", "MAE", "RMSE SD", "Rsquared SD", "MAE SD")
+colnames(cv_table) <- c("Value")
+
+
+knitr::kable(cv_table, caption = "CV Performance Metrics for Selected AIC Model", digits = 3)
+```
+
+
+Based on 10-fold cross-validation, the AIC-selected model demonstrates average generalizability. The average RMSE is `r round(cv_results$RMSE, 2)`, indicating that predictions deviate from actual house prices by roughly this amount on average. The $R^2$ of `r round(cv_results$Rsquared, 2)` shows that about $68\%$ of the variability in house prices is explained by the model. The relatively small standard deviations across the folds indicate that the model performs consistently, regardless of which subset of the data is used. This shows that the selected model is not only simple and easy to interpret but also reliably predicts house prices.
+
 
 ### Wheel 7: Extrinsic Predictive Comparisons
 
+After using AIC to choose a model and cross-validation to make sure it is stable, the next step is to assess how well the model predicts new, unseen data i.e. the test set. This helps us determine how accurate the model is and whether the patterns it picked up from the training data are actually reliable.  We can assess how well the model generalizes by contrasting the predicted and actual house prices.  Theoretically, this is just another method of ensuring that the model maintains low prediction errors when presented with new data and is able to work well when deployed.
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
+# install.packages("Metrics")
+library(Metrics)
+library(dplyr)
+
+test_preds <- predict(step_model, newdata = test_data)
+
+test_actuals <- test_data$Price
+
+tolerance <- 0.10
+
+accuracy <- mean(abs(test_preds - test_actuals) / test_actuals <= tolerance) * 100
+rmse_val <- rmse(test_actuals, test_preds)
+mae_val  <- mae(test_actuals, test_preds)
+r2_val   <- cor(test_actuals, test_preds)^2 
+
+test_metrics <- data.frame(
+  Metric = c("RMSE", "MAE", "R-squared", "Accuracy"),
+  Value  = c(rmse_val, mae_val, r2_val, accuracy)
+)
+
+knitr::kable(test_metrics, digits = 3, 
+             caption = "Performance of the AIC-Selected Model on the Test Set")
+
 ```
+
+On the test set, the AIC-selected model performs quite well. The RMSE of 6.78 shows that predicted house prices typically differ from the actual prices by about 6.8 units, while the MAE of 4.84 indicates that the average error is slightly smaller. With an $R^2$ of 0.70, the model captures roughly $70\%$ of the variation in house prices, which is good enough for this kind of data. Additionally, the accuracy of $52\%$, with a tolerance of 0.1, demonstrates that the model is both reliable and practically useful.
+
 
 ### Wheel 8: Statistical Inference and Theoretical Justification
+For this wheel, confidence intervals and p values were again used to test for the significance of each parameter estimate, qqplots and residual plots were used to check that the main theoretical assumptions on the error terms in Linear regression with the `OLS/MLE` algorithm that was chosen actually hold. In our regression problem we established that the OLS and MLE algorithms produce similar esimtates. For the OLS algorithm no distributional assumption is made on the error terms but these terms are assumed independent and with constant variance and 0 expectation. For the MLE we assume that the error terms are still independent but are normally distributed with constant variance and 0 expectation. The two plots chosen in this section allow us to check these assumptions on the residual terms. The plots and a table summarizing the significance of each estimate are given below:
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(broom)
+library(ggplot2)
+
+step_model_ci <- tidy(step_model, conf.int = TRUE)  
+step_model_ci <- step_model_ci %>%
+  mutate(Significance = case_when(
+    p.value < 0.001 ~ "***",
+    p.value < 0.01  ~ "**",
+    p.value < 0.05  ~ "*",
+    p.value < 0.1   ~ ".",
+    TRUE            ~ ""
+  ))
+
+knitr::kable(
+  step_model_ci %>% select(term, estimate, std.error, statistic, p.value, conf.low, conf.high, Significance),
+  digits = 4,
+  col.names = c("Term", "Estimate", "Std. Error", "t value", "p value", "CI Low", "CI High", "Significance"),
+  caption = "Coefficient Estimates with Confidence Intervals and Significance"
+)
+
+p1 <- ggplot(step_model, aes(.fitted, .resid)) +
+  geom_point(color = "steelblue", alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(x = "Fitted Values", y = "Residuals", title = "Residuals vs Fitted") +
+  theme_minimal()
+
+p2 <- ggplot(step_model, aes(sample = .resid)) +
+  stat_qq(color = "steelblue", alpha = 0.6) +
+  stat_qq_line(color = "red") +
+  labs(title = "QQ Plot of Residuals") +
+  theme_minimal()
 ```
 
+In general all predictors of our best selected model are significant which is indicated by both the low p-value and the nature of the confidence intervals.
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(gridExtra)
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+* Residuals vs Fitted: The points are scattered fairly evenly around the horizontal line at 0, which suggests that the variance of residuals is roughly constant (no strong heteroscedasticity) and that the residual terms are independent of each other. There are a few noticeable outliers, but most residuals cluster around zero, indicating that the model is capturing the main trends in the data well.
+
+* QQ Plot: Most of the points lie close to the red line, indicating that the residuals are approximately normally distributed. Some deviation at the extreme ends shows minor departures from normality, which is common in real-world datasets.
+
+Our final selected model for predicting house prices in the Taiwan district is thus given as $$\text{Price}=-21474.05+6.97\text{Date}-0.93\text{Age}+0.44\text{Convenience}+301.51\text{Latitude}+0.02\text{Age}^2-5.88\log{(\text{MRT\_distance})}$$
+
+
 ### Wheel 9: Deployment and Practical Scalability
-Deployment is where the model is made available for use in the sense that it is used for its intended purpose. In the House Price context this means that this model is made available for use by stakeholders and all parties involved. This is where the model's true generalizability is tested. For this project, the code and workflows for this project can be accessed [here](YOUR_GITHUB_LINK_HERE).
+Deployment is where the model is made available for use in the sense that it is used for its intended purpose by the people for whom it was made. In this `Taiwan House Price` context this means that this model is made available for use by stakeholders like buyers, sellers, and even policymakers. This is where the model's true generalizability is tested. For this project, the code and workflows were uploaded to a public GitHub repository which can be accessed [here](https://github.com/PearlPearl-Pearl/AIMS/tree/SML/Review%20Phase/SML/Assignments).
 
 
 # 2. Practical Machine Learning - Digit Recognition
