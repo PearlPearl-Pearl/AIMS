@@ -146,6 +146,8 @@ ggplot(numeric_long, aes(y = Value, x = "")) +
 The boxplots support what we already noticed from the correlation analysis. Location and accessibility features don’t vary much. In contrast, features like Age and MRT distance spread out more and show clear outliers. Price is also right-skewed, with a few properties selling for much more than the rest. Overall, the distributions suggest that scaling the features and being mindful of outliers will help the model, but the dataset remains clean and very suitable for regression.
 
 
+
+
 ### Wheel 3: Hypothesis Space
 
 Based on the analysis from the previous wheel, I restrict my hypothesis space to three classes of regression functions for predicting house prices.
@@ -502,7 +504,7 @@ grid.arrange(plot1, plot2, ncol = 2)
 ```
 
 Based on the confusion matrices, the $1-$NN classifier seems to be performing better with `r conf.mat.1NN$table[1, 1]+conf.mat.1NN$table[2, 2]` images being correctly predicted while `r conf.mat.1NN$table[2, 1]+conf.mat.1NN$table[1, 2]` are being wrongly predicted as opposed to the $27-$NN where `r conf.mat.27NN$table[1, 1]+conf.mat.27NN$table[2, 2]` images being correctly predicted while `r conf.mat.27NN$table[2, 1]+conf.mat.27NN$table[1, 2]` are being wrongly predicted. 
-The accuracy for the $1-$NN model is `r round(accuracy_1NN*100, 4)` while the accuracy for the $27-$NN model is `r round(accuracy_27NN*100, 4)` which is consistent with what is being displayed in the scatter plots.
+The accuracy for the $1-$NN model is `r round(accuracy_1NN*100, 4)` while the accuracy for the $27-$NN model is `r round(accuracy_27NN*100, 4)` which is consistent with what is being displayed in the confusion matrices.
 
 ### 4. ROC Curve Analysis
 ```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=4, fig.width=6}
@@ -524,6 +526,7 @@ legend("bottomright",
        col = c("steelblue","pink"), lwd = 2,
        cex = 0.8)
 ```
+
 The ROC curve plots the `True Positive Rate`(Sensitivity) against the `False Positive Rate` (1-Specificity) for the two $k-$NN models that were trained. In particular both models perform well at correctly classifying images as `1` since the ROC curves for both models like well above the diagonal, indicating high sensitivity. The $27-$NN model shows a slightly higher sensitivity at the same false positive rate as compared to the $1-$NN model, suggesting that the former is better at correctly identifying class $1$ images. This is consistent with the `Area Under the Curve`(AUC) values indicated in the legend.
 
 While the confusion matrix shows that the $1-$NN model correctly predicts more instances in each class than the $27-$NN model, resulting in higher accuracy at the chosen threshold, the ROC curves tell a slightly different story. The AUC for the $27-$NN model is higher than that of $1-$NN, indicating that, across all possible thresholds, the $27-$NN model has a slightly better ability to discriminate between the classes. This highlights an important distinction: accuracy from the confusion matrix evaluates performance at a single threshold, whereas AUC summarizes the model’s discriminative ability across thresholds.
@@ -1397,5 +1400,4 @@ ggplot(df_long, aes(x = Method, y = Test_MSE, fill = Method)) +
 
 
 
-This simulation shows significant differences in performance among the tested regression models. Our benchmark is the **Bayes Risk ($R^*$)**, which is the absolute theoretical minimum achievable test error for this problem, calculated as $R^* \approx 0.912$.
-
+Video link can be found [here](https://youtu.be/sQ_xws2VQOo)
