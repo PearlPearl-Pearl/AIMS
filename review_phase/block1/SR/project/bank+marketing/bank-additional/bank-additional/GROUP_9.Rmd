@@ -1,0 +1,102 @@
+---
+title: "Bank Marketing Project"
+author: "Group 9"
+date: "2025-11-25"
+output: pdf_document
+---
+
+# Problem Statement
+# Data Collection
+The dataset used in this analysis comes from the Bank Marketing dataset hosted on the [UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/222/bank+marketing). It contains information on customer demographic attributes, their financial and social characteristics, details of previous marketing contacts, and the outcome of a direct marketing campaign.
+
+Before specifying and fitting any statistical model, it is essential to understand the structure, quality, and behavior of the data. To this end, we conduct an exploratory data analysis (EDA) to examine variable types, detect missing or unknown categories, assess the distribution of numerical predictors, and inspect potential relationships between predictors and the response variable.
+
+This initial exploration guides the cleaning and preprocessing decisions required for logistic regression, ensures that modeling assumptions are not violated early on, and helps identify which variables may contribute meaningfully to predicting the subscription outcome. Below, we provide some exploratory data analysis and a first look at the structure of the dataset. This includes examining the variables, their distributions, and any initial patterns that may inform subsequent modeling decisions.
+
+
+```{r echo=FALSE}
+dfBank <- read.csv('bank-additional.csv', sep=';')
+# head(df, 3)
+columns <- colnames(dfBank)
+```
+The dataset comprises `r nrow(df)` observations and `r ncol(df)` variables.
+
+# Initial Data Inspection
+Before performing any detailed analysis, it is important to gain a preliminary understanding of the dataset’s structure. In this section, we inspect the column names and their corresponding data types to identify which variables are numeric, categorical, or character. This initial inspection provides a foundation for subsequent exploratory data analysis and helps guide decisions on preprocessing, encoding, and handling special or unknown values. The description for each column, its data type, number of unique values and number of missing values are shown below:
+
+```{r echo = FALSE}
+library(knitr)
+
+columns <- colnames(dfBank)
+col_types <- sapply(dfBank, class)
+
+num_unique <- sapply(dfBank, function(col) length(unique(col)))
+num_missing <- sapply(dfBank, function(col) sum(is.na(col)))
+
+col_summary <- data.frame(
+  Col_name = columns,
+  Type = col_types,
+  Unique_Class = num_unique,
+  Num_missing = num_missing,
+  row.names = NULL
+)
+
+kable(col_summary, caption = "Column Description")
+
+```
+
+
+# Exploratory Data Analysis
+```{r}
+library(ggplot2)
+library(gridExtra) 
+
+num_vars <- names(dfBank)[sapply(dfBank, is.numeric)]
+target <- "y"  
+
+plots <- list()
+
+for(col in num_vars){
+  corr_val <- cor(dfBank[[col]], dfBank[[target]], method = "pearson")
+  
+  p <- ggplot(dfBank, aes_string(x = col, y = target)) +
+    geom_jitter(width = 0, height = 0.05, alpha = 0.5, color = "steelblue") +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+    ggtitle(paste(col, "vs", target, "- Corr:", round(corr_val, 3))) +
+    theme_minimal()
+  
+  plots[[col]] <- p
+}
+
+do.call("grid.arrange", c(plots, ncol=2))
+
+```
+
+## Univariate EDA
+
+## Bivariate EDA
+
+## Multivariate EDA
+
+# Data Cleaning and Feature Preparation
+
+## Handling "Unknown" Values
+
+## Handling Special Numeric Values
+
+## Outlier Treatment
+
+## Encoding Categorical Variables
+
+## Feature Scaling
+
+# Model Specification
+
+# Model Fitting
+
+# Model Validation and Criticism
+
+# Interpretation of Coefficients
+
+# Prediction
+

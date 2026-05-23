@@ -1,0 +1,127 @@
+---
+title: "pearl_kuuridong_SR2"
+author: "pearl_kuuridong_SR2"
+date: "2025-11-20"
+output: pdata_document
+---
+
+```{r}
+library(readxl)
+data <- read_excel('Real estate valuation data set.xlsx')
+attach(data)
+```
+
+```{r}
+head(data)
+```
+
+
+# Question One
+
+```{r}
+dev.new(width = 12, height = 12)
+library(corrplot)
+
+corr <- cor(data)
+
+corrplot(
+  corr,
+  method = "color",
+  addCoef.col = "black",
+  number.cex = 1.0,
+  tl.cex = 1.0,
+  cl.cex = 1.0
+)
+
+```
+```{r}
+cols <- colnames(data)
+
+n <- length(cols)
+
+for(i in 1:n){
+  for(j in 1:n){
+    if(i != j){
+      col1 <- data[[j]]
+      col2 <- data[[i]]
+      plot(col1, col2,
+           xlab = cols[j], ylab = cols[i], main=paste(cols[j], "against", cols[i]))
+    }
+  }
+}
+
+```
+
+# Question Two
+```{r}
+m1 <- lm(Price ~ Date, data = data)
+
+m2 <- lm(Price ~ Date + Age, data = data)
+
+m3 <- lm(Price ~ Date + Age + MRT_distance, data = data)
+
+m4 <- lm(Price ~ Date + Age + MRT_distance + Convenience, data = data)
+
+m5 <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude, data = data)
+
+m6 <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude + Longitude, data = data)
+
+```
+
+```{r}
+summary(m1)
+summary(m2)
+summary(m3)
+summary(m4)
+summary(m5)
+summary(m6)
+```
+
+# Question Three
+```{r}
+full_model <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude + Longitude, data = data)
+
+null_model <- lm(Price ~ 1, data = data)
+
+best_model_step <- step(null_model, 
+                        scope = formula(full_model),
+                        direction = "forward")
+
+
+```
+
+# Question Four
+```{r}
+date_age_model <- lm(Price ~ Date + Age, data = data)
+
+full_model <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude + Longitude,
+                 data = data)
+
+date_age_res <- residuals(date_age_model)
+date_age_fitted <- fitted(date_age_model)
+full_model_residuals  <- residuals(full_model)
+full_model_fitted <- fitted(full_model)
+
+ymin <- min(date_age_res, full_model_residuals)
+ymax <- max(date_age_res, full_model_residuals)
+
+plot(date_age_fitted, date_age_res,
+     main = "Residual Plot: Price ~ Date + Age",
+     ylab = "Residuals",
+     xlab = "Fitted Values",
+     ylim = c(ymin, ymax),
+     pch = 19, col="blue")
+
+abline(h = 0, lwd = 2, lty=2, col="red")
+
+plot(full_model_fitted, full_model_residuals,
+     main = "Residual Plot: Full Model (All Variables)",
+     ylab = "Residuals",
+     xlab = "Fitted Values",
+     ylim = c(ymin, ymax),
+     pch = 19, col="blue")
+
+abline(h = 0, lwd = 2, lty=2, col="red")
+
+```
+

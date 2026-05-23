@@ -1,0 +1,237 @@
+---
+title: "Taiwan Real Estate Analysis"
+author: "Pearl Kuuridong"
+date: "2025-11-20"
+output: pdf_document
+---
+
+## Introduction
+In this report, the analysis and findings on real estate data on house prices in a district in Taiwan are presented. The dataset includes the following variables: `Date` of transaction, `Age` of the house, distance to the nearest MRT station (`MRT_distance`), number of `Convenience` stores nearby, geographical coordinates (`Latitude` and `Longitude`), and `Price` of unit area. The goal of this report was to check which variables have the most effect on the `Price` of a house. The approach was simple; correlations and scatter plots, between each pair of variables, particularly those involving `Price` were used to identify interesting patterns (patterns that explain the variability in the `Price` variable). 
+Different linear regression models were fit, starting from one variable and increasing the complexity of the model each time until all predictors were included, to evaluate their effects on `Price`. Tools like the adjusted $R^2$ and the Akaike Information Criterion (AIC), as well as residual plots and F-satistics were used to evaluate the fitted models. A comparison between a manual forward selection model and R's inbuilt AIC forward selection process was also conducted. At the end some transformations of some of the predictors were considered to identify some potential improvements in the predictions of our model. The findings are presented below:
+
+
+```{r echo=FALSE}
+library(readxl)
+data <- read_excel('Real estate valuation data set.xlsx')
+attach(data)
+```
+
+```{r echo=FALSE}
+# head(data)
+# nrow(data); ncol(data)
+# colSums(is.na(data))
+```
+
+
+## 1. Data summary and correlation analysis
+The findings on the correlation analysis are presented in this section: 
+The data set contains `r nrow(data)` rows and `r ncol(data)` variables. No null values were found in any columns. From the scatter plots, focusing on `Price` as the response variable, the following relationships were observed: `Convenience`, `Latitude`, and `Longitude` show a moderate to strong positive linear relationship with `Price`, while `Age` exhibits a weak negative relationship and `Date` a weak positive relationship. `MRT_distance` shows a strong negative linear relationship with `Price`. The patterns observed in the scatter plots align closely with the corresponding correlation coefficients, confirming the strength and direction of each relationship. It is interesting to note the presence of a single outlier in the plot of `Price` against each of the others.
+
+In particular the following interesting relationships with `Price` are noted:
+
+- The relationship with `MRT_distance` shows a very strong negative linear correlation, with a correlation coefficient of `r round(cor(Price, MRT_distance), 3)`. This value is consistent with the general downward pattern observed in the plot. However, it is interesting to note that this general slope is steeper for smaller values of `Price` thus a possible transformation of the variable may explain that variation better.
+
+- The relationship with `Convenience` also shows a very strong positive linear association with a correlation coefficient of `r round(cor(Price, Convenience), 3)`. This high correlation coefficient is consistent with what is observed in the scatter plots which is a general upward trend with roughly constant slope.
+
+- The relationship with `Age` is an interesting one as well, particularly because the structure observed in the plots indicates that the relationship is not entirely linear. Some quadratic behavior is observed in the plots for higher `Age` values indicating that it would be better to consider a quadratic relationship between `Age` and `Price`. This observation aligns with the value of the small value of the correlation coefficient `r round(cor(Price, Age), 3)`.
+
+```{r echo=FALSE, fig.width=8, fig.height=5}
+library(ggplot2)
+library(GGally)
+ggpairs(
+  data,
+  upper = list(continuous = wrap("cor", alpha = 1, size = 3, stars = FALSE)),
+  lower = list(continuous = wrap("points", alpha = 1, size = 1, color = 'pink'))
+) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    axis.text.y = element_text(size = 8),
+    strip.text.y = element_text(size = 10, angle = 0, hjust = 1),
+     plot.margin = margin(15, 5, 30, 15)
+  )
+```
+
+## 2. Manual Forward Selection of Models
+```{r echo=FALSE}
+m1 <- lm(Price ~ Date, data = data)
+
+m2 <- lm(Price ~ Date + Age, data = data)
+
+m3 <- lm(Price ~ Date + Age + MRT_distance, data = data)
+
+m4 <- lm(Price ~ Date + Age + MRT_distance + Convenience, data = data)
+
+m5 <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude, data = data)
+
+m6 <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude + Longitude, data = data)
+
+```
+
+```{r echo=FALSE, message=FALSE}
+# install.packages("knitr")
+library(knitr)
+library(broom)
+library(dplyr)
+
+models <- list(
+  m1, m2, m3, m4, m5, m6
+)
+
+
+model_summary <- data.frame(
+  Model = integer(),
+  `Predictor(p_value)` = character(),
+  R2 = numeric(),
+  Adj_R2 = numeric(),
+  F_stat = numeric(),
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+
+for (i in 1:length(models)) {
+  m <- models[[i]]
+  tidy_m <- tidy(m)
+
+  sig_str <- tidy_m %>%
+    filter(term != "(Intercept)") %>%
+    mutate(sig = ifelse(p.value < 0.001, "<0.001", round(p.value, 3))) %>%
+    mutate(text = paste0(term, " (", sig, ")")) %>%
+    pull(text) %>%
+    paste(collapse = ", ")
+
+  if (sig_str == "") sig_str <- "None"
+
+  model_summary[i, ] <- list(
+    Model = i,
+    Significance = sig_str,
+    R2 = round(summary(m)$r.squared, 3),
+    Adj_R2 = round(summary(m)$adj.r.squared, 3),
+    F_stat = round(summary(m)$fstatistic[1], 2)
+  )
+}
+
+kable(model_summary, caption = "Model Comparison Table")
+
+```
+Predictor variables are grouped into 2 main categories: time-dependent variables (`Date`, `Age`) and location-dependent variables(`MRT_distance`, `Convenience`, `Latitude`, `Longitude`). Starting with the time-dependent variables, the approach used was to progressively add one predictor at a time to explore the combined effects on `Price`. The significance of each predictor, the $R^2$, adjusted $R^2$, the F-statistic of each model are summarized above. The interpretation of each estimate is given below:
+
+* Model 1: Coefficients: Intercept = `r coef(m1)["(Intercept)"]`, Date=`r coef(m1)["Date"]`
+
+Indicating a unit increase in the transaction Date of the house increases the price by `r round(coef(m1)["Date"], 3)`
+
+* Model 2: Coefficients: Intercept = `r coef(m2)["(Intercept)"]`, Date=`r coef(m2)["Date"]`, Age=`r coef(m2)["Age"]`
+
+Indicating that keeping all else constant, a house that is bought a unit `Date` later is more expensive by about `r round(coef(m2)["Date"], 3)` while for houses bought around the same time, an older house costs less than a newer house by about `r -1*round(coef(m2)["Age"], 3)`.
+
+* Model 3: Coefficients: Intercept = `r coef(m3)["(Intercept)"]`, Date=`r coef(m3)["Date"]`, Age=`r coef(m3)["Age"]`, MRT_distance=`r coef(m3)["MRT_distance"]`
+
+Indicating that keeping all else constant, a unit increase in date causes an increase of `r round(coef(m3)["Date"], 3)` in house price, while an older houses tend to cost less than newer houses by about `r -1* round(coef(m3)["Age"], 3)`. Similarly, those closer to MRT stations tend to cost more by about `r -1*round(coef(m3)["MRT_distance"], 3)`.
+
+* Model 4: Coefficients: Intercept = `r coef(m4)["(Intercept)"]`, Date=`r coef(m4)["Date"]`, Age=`r coef(m4)["Age"]`, MRT_distance=`r coef(m4)["MRT_distance"]`, Convenience=`r coef(m4)["Convenience"]`
+
+For houses with similar Age and distance to MRT station, a unit increase in transaction `Date` increases `Price` by about `r round(coef(m4)["Date"], 3)`. Older houses cost less by `r -1*round(coef(m4)["Age"], 3)`, while houses closer to MRT stations cost more by `r -1*round(coef(m4)["MRT_distance"], 3)`. Additionally, for houses with similar age, date, and MRT distance, having one more nearby convenience store increases Price by `r round(coef(m4)["Convenience"], 3)`.
+
+
+* Model 5: Coefficients: Intercept = `r coef(m5)["(Intercept)"]`, Date=`r coef(m5)["Date"]`, Age=`r coef(m5)["Age"]`, MRT_distance=`r coef(m5)["MRT_distance"]`, Convenience=`r coef(m5)["Convenience"]`, Latitude=`r coef(m5)["Latitude"]`
+
+Keeping all else constant, a unit increase in `Date` increases `Price` by `r round(coef(m5)["Date"], 3)`. Older houses cost less by `r -1*round(coef(m5)["Age"], 3)`. Closer MRT stations increase Price by `r -1*round(coef(m5)["MRT_distance"], 3)`. Each additional convenience store nearby increases Price by `r round(coef(m5)["Convenience"], 3)`, and houses located further North (higher `Latitude`) are more expensive by `r round(coef(m5)["Latitude"], 3)`.
+
+* Model 6: Coefficients: Intercept = `r coef(m6)["(Intercept)"]`, Date=`r coef(m6)["Date"]`, Age=`r coef(m6)["Age"]`, MRT_distance=`r coef(m6)["MRT_distance"]`, Convenience=`r coef(m6)["Convenience"]`, Latitude=`r coef(m6)["Latitude"]`, Longitude=`r coef(m6)["Longitude"]`
+
+Controlling for all other factors, a unit increase in Date raises Price by `r round(coef(m6)["Date"], 3)`. Older houses cost less by `r -1*round(coef(m6)["Age"], 3)`. Closer MRT stations increase Price by `r -1*round(coef(m6)["MRT_distance"], 3)`. Each additional convenience store increases Price by `r round(coef(m6)["Convenience"], 3)`, and higher Latitude increases Price by `r round(coef(m6)["Latitude"], 3)`. Longitude has a small negative effect, with houses further East costing slightly less by `r round(coef(m6)["Longitude"], 3)`.
+
+Including additional predictors steadily improves model performance: p-values decrease and both $R^2$ and adjusted $R^2$ rise, especially after adding the location-dependent variables. `MRT_distance`, `Convenience`, `Age`, and `Latitude` consistently show strong significance, while `Longitude` remains non-significant. The F-statistics sharply increase in models that include spatial predictors, confirming their major contribution to explaining price variation. Overall, the results show that proximity to amenities and North–South location play key roles in determining house prices, whereas East–West variation does not.
+
+
+## 3. AIC Comparison
+The `R step` function was used to perform forward model selection. The base model was the model with only the intercept.
+```{r echo=FALSE}
+null_model <- lm(Price ~ 1, data = data)
+
+best_model_step <- step(null_model,
+                        scope = formula(m6),
+                        direction = "forward",
+                        trace=0
+                        )
+
+step_history <- best_model_step$anova
+kable(step_history, caption="AIC Values")
+```
+It is evident that the AIC value of the model with just the intercept is 2162.53, which serves as a baseline. Adding `MRT_distance` reduces the AIC to 1914.19, indicating that `MRT_distance` explains a large portion of the variation in `Price`. At the next step, adding `Convenience` further lowers the AIC to 1882.40, showing that the number of nearby convenience stores also improves model fit. Progressively adding `Age`, `Latitude`, and `Date` continue to decrease AIC to 1846.09, 1820.03, and 1811.10, respectively, demonstrating that each predictor explains some of the variability in `Price`. Adding `Longitude`, however, slightly increases the AIC to 1813.0, indicating that it does not improve the model sufficiently to justify the added complexity. Overall, the final model selected according to the AIC-based selection includes the following predictors `MRT_distance`, `Convenience`, `Age`, `Latitude`, and `Date`, which is consistent with the F-statistics and $R^2_{adj}$ observed in the previous section.
+
+
+## 4. Residual Analysis
+The residual plots of the m2 model (`Date` + `Age`) and the full m6 model were analyzed. The residual-versus-fitted(RVF) plots show that the `Date` + `Age` has larger variability than the full model residuals, indicating that the full model explains the variability in `Price` better. 
+Both models show slight patterns in the RVF plots. In particular, the full model reduces the slight pattern observed in the `Date`+`Age` model. The QQ plots for both show some slight deviations at the end. In particular the QQ plot for the `Date`+`Age` model shows some deviations at both ends, with plotted points adhering to the straight line but not as much as in the case of the full model, while the QQ plot for the full model generally follows the straight line except towards the end where some large deviations are observed. This indicates possible outliers in the `Date`+`Age` model, which remain present even in the full model. Additionally, the QQ plots suggest that the assumption of normality improves with the full model than with the smaller model. In conclusion, there is a clear improvement when moving from the smaller model to the larger model. 
+
+```{r echo=FALSE}
+par(mfrow = c(1, 4))
+par(mar = c(2, 2, 2, 1))
+par(oma = c(0, 0, 0, 0))
+par(pty = "s")
+
+m2 <- lm(Price ~ Date + Age, data = data)
+m6  <- lm(Price ~ Date + Age + MRT_distance + Convenience +
+              Latitude + Longitude, data = data)
+
+res_small <- residuals(m2)
+res_full  <- residuals(m6)
+ylims <- range(c(res_small, res_full))
+
+plot(fitted(m2), res_small, ylim = ylims,
+     main = "RVF: Date + Age",
+     xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+plot(fitted(m6), res_full, ylim = ylims,
+     main = "RVF: Full Model",
+     xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+qqnorm(res_small, ylim = ylims, main = "QQ: Date + Age")
+qqline(res_small, col = "red")
+
+qqnorm(res_full, ylim = ylims, main = "QQ: Full Model")
+qqline(res_full, col = "red")
+
+```
+
+## 5. Feature Engineering
+Different transformations of predictors were considered. The adjusted $R^2$ value for each model that we tried is presented below:
+
+```{r echo=FALSE, messages=FALSE}
+m_log_mrt <- lm(Price ~ Date+Age+log(MRT_distance)+Convenience+Latitude+Longitude, data=data)
+
+m_age_sq <- lm(Price ~ Date+Age+I(Age^2)+MRT_distance+Convenience+Latitude+Longitude, data=data)
+
+m_age_conv <- lm(Price ~ Date+(Age*Convenience)+MRT_distance+Latitude + Longitude, data = data)
+
+m_latlong <- lm(Price ~ Date+Age+MRT_distance+Convenience+(Latitude*Longitude), data = data)
+
+m_age_mrt <- lm(Price ~ Date+Age+MRT_distance+Convenience+(Age*MRT_distance), data = data)
+
+
+transformed_models <- data.frame(
+  model_transformation = c(
+    "log(MRT_distance)",
+    "Age^2",
+    "Age * Convenience",
+    "Latitude * Longitude",
+    "Age * MRT_distance"
+  ),
+  Adj_R2 = c(
+    summary(m_log_mrt)$adj.r.squared,
+    summary(m_age_sq)$adj.r.squared,
+    summary(m_age_conv)$adj.r.squared,
+    summary(m_latlong)$adj.r.squared,
+    summary(m_age_mrt)$adj.r.squared
+  )
+)
+
+kable(transformed_models, caption = "Adjusted R² for Transformed Models")
+```
+
+Based on these values, it is evident that the best three transformations are `log(MRT_distance)`, `Age^2`, and `Latitude × Longitude`, since they have the highest adjusted $R^2$ values indicating that they explain the largest proportion of variation in Price. These results are consistent with what is evident in the scatter plots above. 
+
+## Conclusion
+The combined effect of time-dependent (`Date`, `Age`) and location-dependent (`MRT_distance`, `Convenience`, `Latitude`) variables strongly influences house prices, and AIC selection and feature engineering improved model model accuracy.

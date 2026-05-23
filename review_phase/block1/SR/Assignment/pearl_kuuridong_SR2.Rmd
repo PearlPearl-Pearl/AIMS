@@ -1,0 +1,157 @@
+---
+title: "Taiwan Real Estate Analysis"
+# author: "pearl_kuuridong_SR2"
+# date: "2025-11-20"
+output: pdf_document
+---
+
+# INTRODUCTION
+In this report we present our findings on real estate data on house prices in a district in Taiwan. The dataset includes the following variables: `Date` of transaction, `Age` of the house, distance to the nearest MRT station (`MRT_distance`), number of `Convenience` stores nearby, geographical coordinates (`Latitude` and `Longitude`), and `Price` per unit area. In this report we project we sought to explore the relationships and between these variables and how they affect the `Price` in particular. The approach in this assignment was to check pairwise relationships through correlations and scatter plots to identify notable patterns. Subsequently, we fit a series of linear regression models, progressively including variables to evaluate their individual and combined effects on `Price`. 
+We compare these different models using some metrics like the adjusted $R^2$ and the Akaike Information Criterion (AIC), as well as residual plots. At the end we consider some transformations of independent variables to identify some potential improvements in the predictions of our model. We present our findings below:
+
+
+```{r echo=FALSE}
+library(readxl)
+data <- read_excel('Real estate valuation data set.xlsx')
+attach(data)
+```
+
+```{r echo=FALSE}
+# head(data)
+```
+
+
+# Correlation Analysis
+
+```{r echo=FALSE}
+library(ggplot2)
+library(GGally)
+ggpairs(
+  data,
+  upper = list(continuous = wrap("cor", alpha = 1, size = 3, stars = FALSE)),
+  lower = list(continuous = wrap("smooth", alpha = 1, size = 1, color = 'pink'))
+) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    axis.text.y = element_text(size = 8),
+    strip.text.y = element_text(size = 10, angle = 0, hjust = 1),
+     plot.margin = margin(15, 5, 30, 15)
+  )
+```
+<!-- From the scatterplots, we see that focusing on `Price` as response, it has a moderate to strong positive linear relationship with the `Latitude`, `Longitude`, and `Convenience` variables whereas it has a weak negative linear relationship with `Age`, a weak positive linear relationship with `Date` and a strong negative linear relationship with `MRT_distance`. These intuitions from our scatterplot are consistent with the values of the correlation coefficient in each case.  -->
+From the scatterplots, focusing on `Price` as the response variable, we observe the following relationships: `Convenience`, `Latitude`, and `Longitude` show a moderate to strong positive linear association with `Price`, whereas `Age` exhibits a weak negative relationship and `Date` a weak positive relationship. `MRT_distance` shows a strong negative linear association with `Price`. These patterns observed in the scatterplots are consistent with the corresponding correlation coefficients, confirming the strength and direction of each relationship. It is interesting to note the presence of one outlier in the plot of `Price` against the others.
+
+# Forward Selection of Models
+```{r echo=FALSE}
+m1 <- lm(Price ~ Date, data = data)
+
+m2 <- lm(Price ~ Date + Age, data = data)
+
+m3 <- lm(Price ~ Date + Age + MRT_distance, data = data)
+
+m4 <- lm(Price ~ Date + Age + MRT_distance + Convenience, data = data)
+
+m5 <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude, data = data)
+
+m6 <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude + Longitude, data = data)
+
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE}
+# install.packages("knitr")
+library(knitr)
+library(broom)
+library(dplyr)
+
+models <- list(
+  m1, m2, m3, m4, m5, m6
+)
+
+
+model_summary <- data.frame(
+  Model = integer(),
+  Predictor_p_value = character(),
+  R2 = numeric(),
+  Adj_R2 = numeric(),
+  F_stat = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (i in 1:length(models)) {
+  m <- models[[i]]
+  tidy_m <- tidy(m)
+
+  sig_str <- tidy_m %>%
+    filter(term != "(Intercept)") %>%
+    mutate(sig = ifelse(p.value < 0.001, "<0.001", round(p.value, 3))) %>%
+    mutate(text = paste0(term, " (", sig, ")")) %>%
+    pull(text) %>%
+    paste(collapse = ", ")
+
+  if (sig_str == "") sig_str <- "None"
+
+  # Add to table
+  model_summary[i, ] <- list(
+    Model = i,
+    Significance = sig_str,
+    R2 = round(summary(m)$r.squared, 3),
+    Adj_R2 = round(summary(m)$adj.r.squared, 3),
+    F_stat = round(summary(m)$fstatistic[1], 2)  # F value
+  )
+}
+
+kable(model_summary, caption = "Model Comparison Table")
+
+```
+In our analysis we group our predictor variables into 2 main categories: time-dependent (`Date`, `Age`), location-dependent(`MRT_distance`, `Convenience`, `Latitude`, `Longitude`). The location-dependent variables are generally fixed over time. Our approach was to first examine the effects of each group on `Price` individually and then evaluate their combined effect in a full model. The table above summarizes the significance of each variable as we progressively added predictors, showing how each model contributes to explaining the variation in `Price.` Notably, the p-value for `Date` decreases as more predictors are included, indicating that its effect becomes statistically significant once the other variables are accounted for. This aligns with our expectation that financial markets are quickly changin. The other predictors generally retain high statistical significance throughout. `MRT_distance` and `Convenience` are significant, consistent with the idea that proximity to amenities and transit affects property values. In contrast, `Longitude` is not significant, suggesting that East-West variation in location has minimal impact on prices in this district, whereas `Latitude` is significant, indicating that North-South differences are more strongly associated with house price variation. In addition to the significance of each predictor, we notice that the F-statistic for each model is very small for models 1 and 2 whereas it is considerably high for models 3, 4 and 5, and moderately high for the last model. This suggests that adding location-dependent predictors substantially improves the overall explanatory power of the models, confirming that these variables collectively play a critical role in determining house prices.
+R² and Adjusted R² increase across the six models, showing that adding predictors progressively improves the explanation of variation in Price. With only `Date`, $R^2$ is very low (0.008), while adding Age increases it slightly (0.053). Including location-dependent variables (`MRT_distance`, `Convenience`, `Latitude`) in models 3–5 substantially raises $R^2$ to 0.582 and Adjusted $R^2$ to 0.577, highlighting their strong ability to explain the variability in `Price`. Adding Longitude in the final model does not change $R^2$ that much, which consistent with its high p-value. Overall, the trend confirms that these predictors enhance model explanatory power.
+
+# AIC Comparison
+```{r echo=FALSE}
+null_model <- lm(Price ~ 1, data = data)
+
+best_model_step <- step(null_model,
+                        scope = formula(m6),
+                        direction = "forward")
+
+
+```
+
+# Residual Analysis
+<!-- ```{r echo=FALSE} -->
+<!-- date_age_model <- lm(Price ~ Date + Age, data = data) -->
+
+<!-- full_model <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude + Longitude, -->
+<!--                  data = data) -->
+
+<!-- date_age_res <- residuals(date_age_model) -->
+<!-- date_age_fitted <- fitted(date_age_model) -->
+<!-- full_model_residuals  <- residuals(full_model) -->
+<!-- full_model_fitted <- fitted(full_model) -->
+
+<!-- ymin <- min(date_age_res, full_model_residuals) -->
+<!-- ymax <- max(date_age_res, full_model_residuals) -->
+
+<!-- plot(date_age_fitted, date_age_res, -->
+<!--      main = "Residual Plot: Price ~ Date + Age", -->
+<!--      ylab = "Residuals", -->
+<!--      xlab = "Fitted Values", -->
+<!--      ylim = c(ymin, ymax), -->
+<!--      pch = 19, col="blue") -->
+
+<!-- abline(h = 0, lwd = 2, lty=2, col="red") -->
+
+<!-- plot(full_model_fitted, full_model_residuals, -->
+<!--      main = "Residual Plot: Full Model (All Variables)", -->
+<!--      ylab = "Residuals", -->
+<!--      xlab = "Fitted Values", -->
+<!--      ylim = c(ymin, ymax), -->
+<!--      pch = 19, col="blue") -->
+
+<!-- abline(h = 0, lwd = 2, lty=2, col="red") -->
+
+<!-- ``` -->
+

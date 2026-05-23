@@ -1,0 +1,164 @@
+---
+title: "R_lab"
+author: "pearl_kuuridong_SR2"
+date: "2025-11-28"
+output: html_document
+---
+
+```{r}
+data <- read.csv('growth_data.txt', sep='\t')
+View(data)
+```
+
+```{r}
+colSums(is.na(data))
+# nrow(data)
+# nrow(data[data$treatment == NA,])
+
+hist(data$treatment)
+hist(data$height)
+hist(data$age)
+
+data$height[is.na(data$height)] <- median(data$height, na.rm=T)
+data$age[is.na(data$age)] <- median(data$age, na.rm=T)
+
+
+table(data$treatment)
+```
+
+```{r}
+non_missing <- data$treatment[!is.na(data$treatment)]
+
+class_probs <- prop.table(table(non_missing))
+
+n_na <- sum(is.na(data$treatment))
+
+set.seed(123)
+random_impute <- sample(
+  names(class_probs), 
+  size = n_na, 
+  replace = TRUE, 
+  prob = class_probs
+)
+
+data$treatment[is.na(data$treatment)] <- random_impute
+```
+
+```{r}
+unique_ids <- unique(data$child)
+length(unique_ids)
+
+# table(data$child)
+
+
+# child_ids to use
+# 90211
+# 90070
+# 80369
+
+# set.seed(123)
+# selected_ids <- sample(unique_ids, size = 3, replace = FALSE)
+# selected_ids
+
+selected_ids <- c(90211, 90070, 80369)
+```
+
+```{r}
+library(dplyr)
+selected_data <- data %>% filter(child %in% selected_ids)
+selected_data$age_in_years <- round((selected_data$age)/12, 0)
+selected_data$age_in_years_round <- round((selected_data$age)/12, 2)
+selected_data
+# table(selected_data$child)
+```
+
+```{r}
+#library(tidyverse)
+
+# Plot
+ggplot(selected_data, aes(x = age_in_years, y = height, color = factor(child))) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_x_continuous(
+  breaks = seq(min(selected_data$age_in_years),
+               max(selected_data$age_in_years),
+               by = 1)
+) +
+labs(
+    title = "Growth Curves for Three Children",
+    x = "Age (years)",
+    y = "Height (cm)",
+    color = "Child ID"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(selected_data, aes(x = age_in_years, y = height,
+                          color = factor(child),
+                          linetype = factor(treatment))) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_x_continuous(
+    breaks = seq(min(selected_data$age_in_years),
+                 max(selected_data$age_in_years),
+                 by = 1)
+  ) +
+  labs(
+    title = "Growth Curves for Three Selected Children",
+    x = "Age (years)",
+    y = "Height (cm)",
+    color = "Child ID",
+    linetype = "Treatment"
+  ) +
+  theme_minimal()
+
+```
+```{r}
+ggplot(selected_data, aes(
+    x = age_in_years,
+    y = height,
+    color = factor(child),
+    linetype = factor(treatment)
+  )) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2, aes(shape = factor(treatment))) +
+  scale_x_continuous(
+    breaks = seq(min(selected_data$age_in_years),
+                 max(selected_data$age_in_years),
+                 by = 1)
+  ) +
+  labs(
+    title = "Growth Curves for Three Children",
+    x = "Age (years)",
+    y = "Height (cm)",
+    color = "Child ID",
+    linetype = "Treatment",
+    shape = "Treatment"
+  ) +
+  theme_minimal()
+
+```
+```{r}
+ggplot(selected_data, aes(x = age_in_years, y = height,
+                          color = factor(child),
+                          linetype = factor(treatment=2))) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_x_continuous(
+    breaks = seq(min(selected_data$age_in_years),
+                 max(selected_data$age_in_years),
+                 by = 1)
+  ) +
+  labs(
+    title = "Growth Curves for Three Selected Children",
+    x = "Age (years)",
+    y = "Height (cm)",
+    color = "Child ID",
+    linetype = "Treatment"
+  ) +
+  theme_minimal()
+
+```
+

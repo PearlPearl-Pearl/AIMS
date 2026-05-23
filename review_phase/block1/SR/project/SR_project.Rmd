@@ -1,0 +1,33 @@
+---
+title: "project presentation"
+author: "GROUP 9"
+date: "2025-11-24"
+output: html_document
+---
+
+```{r}
+file_path = 'bank+marketing/bank-additional/bank-additional/bank-additional.csv'
+
+df = read.csv(file_path, sep = ';')
+```
+
+```{r}
+head(df)
+ncol(df); nrow(df)
+```
+
+```{r}
+colSums(is.na(df))
+```
+```{r}
+for (col in df)
+{
+  if {typeof(col)=='integer'| typeof(col)=='numeric'
+    print(class(col))}
+  print(class(col))
+}
+```
+
+
+
+

@@ -1,0 +1,29 @@
+---
+title: "Lab"
+author: "pearl_kuuridong_SR2"
+date: "2025-11-21"
+output: html_document
+---
+
+```{r}
+data <- read.csv("automobile.csv", header = F, na.strings = "?")
+```
+
+```{r}
+head(data)
+```
+```{r}
+attach(data)
+```
+
+```{r}
+new_data <- data[c("V17", "V22", "V14", "V25", "V26")]
+```
+
+```{r}
+colSums(is.na(new_data))
+```
+```{r}
+summary(new_data)
+```
+

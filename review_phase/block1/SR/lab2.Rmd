@@ -1,0 +1,154 @@
+---
+title: "RLab2"
+author: "pearl_kuuridong_SR2"
+date: "2025-11-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(lme4)
+library(lmerTest)
+library(merTools)
+data <- read.csv('growth_data.txt', sep='\t')
+data$child <- as.factor(data$child)
+data$treatment <- as.factor(data$treatment)
+```
+
+```{r}
+
+selected_children <- c(90211, 90070, 80369)
+
+# Filter manually using base R
+three_children <- data[data$child %in% selected_children, ]
+```
+
+```{r}
+data$height[is.na(data$height)] <- median(data$height, na.rm=T)
+data$age[is.na(data$age)] <- median(data$age, na.rm=T)
+non_missing <- data$treatment[!is.na(data$treatment)]
+
+class_probs <- prop.table(table(non_missing))
+
+n_na <- sum(is.na(data$treatment))
+
+set.seed(123)
+random_impute <- sample(
+  names(class_probs), 
+  size = n_na, 
+  replace = TRUE, 
+  prob = class_probs
+)
+
+data$treatment[is.na(data$treatment)] <- random_impute
+```
+
+```{r}
+names(data)
+
+```
+
+
+```{r}
+# Plot using ggplot2
+ggplot(three_children, aes(x = age, y = height, colour = child)) +
+  geom_line(size=1) +
+  geom_point() +
+  theme_minimal() +
+  labs(title="Growth Curves for Selected Children",
+       x="Age", y="Height")
+```
+# COMMENT:
+# The plot shows individual growth curves. Children generally increase in height with age
+# but the slopes differ, indicating individual variability. Some children may respond 
+# differently depending on treatment or biological differences.
+# ============================
+# (b) Full data plotted in three panels by treatment
+# ============================
+```{r}
+ggplot(data, aes(x = age, y = height, group = child)) +
+  geom_line(alpha=0.4) +
+  facet_wrap(~ treatment) +
+  theme_minimal() +
+  labs(title="All Growth Curves by Treatment Group",
+       x="Age", y="Height")
+```
+# COMMENT:
+# Each treatment panel shows variability in growth trajectories. 
+# Some treatments exhibit steeper growth slopes or higher variability.
+# This suggests treatment may influence growth rate.
+
+
+# ============================
+# (c) Linear mixed model: random intercept
+# ============================
+
+```{r}
+model_intercept <- lmer(height ~ age + treatment + (1 | child), data=data)
+summary(model_intercept)
+```
+
+# COMMENT:
+# Random intercept captures child-specific baseline height.
+# Fixed effects estimate overall effect of age and differences between treatments.
+# Treatment may shift average height but slopes remain common across children.
+
+
+# ============================
+# (d) Linear mixed model: random slope
+# ============================
+
+```{r}
+model_slope <- lmer(height ~ age + treatment + (0 + age | child), data=data)
+summary(model_slope)
+
+```
+
+# COMMENT:
+# Random slope allows each child to have their own growth rate.
+# Age slope varies significantly between children if random slope variance > 0.
+# No random intercept in this model.
+
+
+# ============================
+# (e) Random intercept + random slope
+# ============================
+
+```{r}
+model_full <- lmer(height ~ age + treatment + (age | child), data=data)
+summary(model_full)
+
+# Extract random effects with confidence intervals
+re <- REsim(model_full)
+
+# Plot random effects
+plotREsim(re)
+
+```
+
+
+# COMMENT:
+# This model captures both baseline height differences (intercept)
+# and differences in growth rates (slope) across children.
+# Confidence intervals show how much each child's random intercept and slope deviate
+# from the population average. Wider intervals indicate greater uncertainty.
+
+
+# ============================
+# (f) Compare model in (e) vs model in (c)
+# ============================
+
+```{r}
+anova(model_intercept, model_full)
+```
+
+# COMMENT:
+# Likelihood ratio test:
+# If p-value < 0.05, the full model (random intercept + slope) fits significantly better.
+# This means children differ not only in baseline height but also in growth rate.
+# If p-value > 0.05, the simpler random intercept model is adequate.
+
+```{r}
+
+```
+

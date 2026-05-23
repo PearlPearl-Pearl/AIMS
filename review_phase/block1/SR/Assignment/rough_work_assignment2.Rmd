@@ -1,0 +1,141 @@
+---
+title: "Taiwan Real Estate Analysis"
+# author: "pearl_kuuridong_SR2"
+# date: "2025-11-20"
+output: pdf_document
+---
+
+# INTRODUCTION
+In this report we present our findings on real estate data on house prices in a district in Taiwan. The dataset includes the following variables: `Date` of transaction, `Age` of the house, distance to the nearest MRT station (`MRT_distance`), number of `Convenience` stores nearby, geographical coordinates (`Latitude` and `Longitude`), and `Price` per unit area. In this report we project we sought to explore the relationships and between these variables and how they affect the `Price` in particular. The approach in this assignment was to check pairwise relationships through correlations and scatter plots to identify notable patterns. Subsequently, we fit a series of linear regression models, progressively including variables to evaluate their individual and combined effects on `Price`. 
+We compare these different models using some metrics like the adjusted $R^2$ and the Akaike Information Criterion (AIC), as well as residual plots. At the end we consider some transformations of independent variables to identify some potential improvements in the predictions of our model. We present our findings below:
+
+
+```{r echo=FALSE}
+library(readxl)
+data <- read_excel('Real estate valuation data set.xlsx')
+attach(data)
+```
+
+```{r echo=FALSE}
+# head(data)
+```
+
+
+# Correlation Analysis
+
+```{r echo=FALSE}
+library(ggplot2)
+library(GGally)
+ggpairs(
+  data,
+  upper = list(continuous = wrap("cor", alpha = 1, size = 3, stars = FALSE)),
+  lower = list(continuous = wrap("smooth", alpha = 1, size = 1, color = 'pink'))
+) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    axis.text.y = element_text(size = 8),
+    strip.text.y = element_text(size = 10, angle = 0, hjust = 1),
+     plot.margin = margin(15, 5, 30, 15)
+  )
+```
+<!-- From the scatterplots, we see that focusing on `Price` as response, it has a moderate to strong positive linear relationship with the `Latitude`, `Longitude`, and `Convenience` variables whereas it has a weak negative linear relationship with `Age`, a weak positive linear relationship with `Date` and a strong negative linear relationship with `MRT_distance`. These intuitions from our scatterplot are consistent with the values of the correlation coefficient in each case.  -->
+From the scatterplots, focusing on `Price` as the response variable, we observe the following relationships: `Convenience`, `Latitude`, and `Longitude` show a moderate to strong positive linear association with `Price`, whereas `Age` exhibits a weak negative relationship and `Date` a weak positive relationship. `MRT_distance` shows a strong negative linear association with `Price`. These patterns observed in the scatterplots are consistent with the corresponding correlation coefficients, confirming the strength and direction of each relationship. It is interesting to note the presence of one outlier in the plot of `Price` against the others.
+
+# Forward Selection of Models
+```{r echo=FALSE}
+m1 <- lm(Price ~ Date, data = data)
+
+m2 <- lm(Price ~ Date + Age, data = data)
+
+m3 <- lm(Price ~ Date + Age + MRT_distance, data = data)
+
+m4 <- lm(Price ~ Date + Age + MRT_distance + Convenience, data = data)
+
+m5 <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude, data = data)
+
+m6 <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude + Longitude, data = data)
+
+```
+
+```{r echo=FALSE, message=FALSE}
+# install.packages("knitr")
+library(knitr)
+library(broom)
+library(dplyr)
+
+models <- list(
+  m1, m2, m3, m4, m5, m6 
+)
+
+model_summary <- lapply(1:6, function(i) {
+  m <- models[[i]]
+  tidy_m <- tidy(m)
+  
+  sig <- tidy_m %>% 
+    filter(p.value < 0.05, term != "(Intercept)") %>% 
+    pull(term) %>% 
+    paste(collapse = ", ")
+  
+  if (sig == "") sig <- "None"
+  
+  data.frame(
+    Model = i,
+    Predictors = paste(attr(m$terms, "term.labels"), collapse = ", "),
+    Significant = sig,
+    R2 = summary(m)$r.squared,
+    Adj_R2 = summary(m)$adj.r.squared
+  )
+}) %>% bind_rows()
+
+kable(model_summary, caption = "Model Comparison Table")
+
+```
+
+<!-- # Three -->
+<!-- ```{r echo=FALSE} -->
+<!-- full_model <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude + Longitude, data = data) -->
+
+<!-- null_model <- lm(Price ~ 1, data = data) -->
+
+<!-- best_model_step <- step(null_model,  -->
+<!--                         scope = formula(full_model), -->
+<!--                         direction = "forward") -->
+
+
+<!-- ``` -->
+
+<!-- # Question Four -->
+<!-- ```{r echo=FALSE} -->
+<!-- date_age_model <- lm(Price ~ Date + Age, data = data) -->
+
+<!-- full_model <- lm(Price ~ Date + Age + MRT_distance + Convenience + Latitude + Longitude, -->
+<!--                  data = data) -->
+
+<!-- date_age_res <- residuals(date_age_model) -->
+<!-- date_age_fitted <- fitted(date_age_model) -->
+<!-- full_model_residuals  <- residuals(full_model) -->
+<!-- full_model_fitted <- fitted(full_model) -->
+
+<!-- ymin <- min(date_age_res, full_model_residuals) -->
+<!-- ymax <- max(date_age_res, full_model_residuals) -->
+
+<!-- plot(date_age_fitted, date_age_res, -->
+<!--      main = "Residual Plot: Price ~ Date + Age", -->
+<!--      ylab = "Residuals", -->
+<!--      xlab = "Fitted Values", -->
+<!--      ylim = c(ymin, ymax), -->
+<!--      pch = 19, col="blue") -->
+
+<!-- abline(h = 0, lwd = 2, lty=2, col="red") -->
+
+<!-- plot(full_model_fitted, full_model_residuals, -->
+<!--      main = "Residual Plot: Full Model (All Variables)", -->
+<!--      ylab = "Residuals", -->
+<!--      xlab = "Fitted Values", -->
+<!--      ylim = c(ymin, ymax), -->
+<!--      pch = 19, col="blue") -->
+
+<!-- abline(h = 0, lwd = 2, lty=2, col="red") -->
+
+<!-- ``` -->
+

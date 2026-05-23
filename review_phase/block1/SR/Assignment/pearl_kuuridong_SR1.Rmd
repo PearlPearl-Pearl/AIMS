@@ -1,0 +1,211 @@
+---
+title: "pearl_kuuridong_SR1"
+author: "pearl_kuuridong_SR1"
+date: "2025-11-14"
+output: pdf_document
+---
+
+```{r}
+data <- mtcars
+attach(data)
+
+head(data)
+```
+
+```{r}
+columns <- colnames(data)
+columns
+```
+
+# Question One
+
+We have the correlations below:
+```{r}
+for (i in 1:(length(columns)))
+{
+  for (j in 1:length(columns))
+  {
+    if (i != j)
+    {
+      col1 <- columns[i]
+      col2 <- columns[j]
+      correlation <- cor(data[[col1]], data[[col2]])
+      print(paste('The correlation between', col1, 'and', col2, 'is', correlation))
+    }
+  }
+}
+```
+
+We have the plots below:
+```{r}
+for (i in 1:(length(columns)))
+{
+  for (j in 1:length(columns))
+  {
+    if (i != j)
+    {
+      col1 <- columns[i]
+      col2 <- columns[j]
+      plot(data[[col1]], data[[col2]], xlab=col1, ylab=col2, main = paste('Plot of',col2, 'against', col1))
+    }
+  }
+}
+```
+In particular, we plot only the graphs for only mpg against all the other variables
+
+```{r}
+for (i in 2:length(columns))
+{
+  col <- columns[i]
+  plot(data[['mpg']], data[[col]], xlab='mpg', ylab=col, main=paste('Plot of', col, 'against mpg'), sub = paste('Correlation = ', cor(data[['mpg']], data[[col]])))
+  plot(data[[col]], data[['mpg']], xlab=col, ylab='mpg', main=paste('Plot of mpg against', col), sub = paste('Correlation = ', cor(data[[col]], data[['mpg']])))
+}
+```
+and in particular we look at only the correlations between mpg and the other variables
+```{r}
+for (i in 2:length(columns))
+{
+  col <- columns[i]
+  correlation <- cor(data[['mpg']], data[[col]])
+  print(paste('The correlation between', 'mpg', 'and', col, 'is', correlation))
+  new_correlation <- cor(data[[col]], data[['mpg']])
+  print(paste('The correlation between', col, 'and mpg is', new_correlation))
+}
+```
+
+# Question Two
+```{r}
+disp_model = lm(mpg ~ disp, data=data)
+drat_model = lm(mpg ~ drat, data=data)
+wt_model = lm(mpg ~ wt, data=data)
+```
+
+```{r}
+summary(disp_model)
+confint(disp_model, level = 0.95)
+```
+
+```{r}
+summary(drat_model)
+confint(drat_model, level = 0.95)
+```
+
+```{r}
+summary(wt_model)
+confint(wt_model, level = 0.95)
+```
+#Question Three
+```{r}
+plot(disp_model$residuals, ylab='residual_values', main='Plot of Residuals of Fitted Values With disp As Covariate')
+abline(h = 0, lty = 2, lwd = 0.9)
+```
+```{r}
+plot(drat_model$residuals, ylab='residual_values', main='Plot of Residuals of Fitted Values With drat As Covariate')
+abline(h = 0, lty = 2, lwd = 0.9)
+```
+```{r}
+plot(wt_model$residuals, ylab='residual_values', main='Plot of Residuals of Fitted Values With wt As Covariate')
+abline(h = 0, lty = 2, lwd = 0.9)
+```
+# Question Four
+```{r}
+predicted_mpg_disp <- predict(disp_model, newdata = data.frame(disp=290))
+predicted_mpg_disp
+```
+
+```{r}
+predicted_mpg_drat <- predict(drat_model, newdata = data.frame(drat=3.25))
+predicted_mpg_drat
+```
+
+```{r}
+predicted_mpg_wt <- predict(wt_model, newdata = data.frame(wt=2.950))
+predicted_mpg_wt
+```
+
+# Question Five
+
+We define functions to compute the estimators given the data 
+```{r}
+beta_one_hat <- function(y, x){
+  x_bar <- mean(x, na.rm=T)
+  sxx <- sum((x - x_bar)^2)
+  sxy <- sum(y*(x-x_bar))
+  
+  return(sxy/sxx)
+}
+
+beta_zero_hat <- function(y, x, beta_one){
+  y_bar <- mean(y, na.rm=T)
+  x_bar <- mean(x, na.rm=T)
+  
+  beta_zero <- y_bar - (beta_one*x_bar)
+  return(beta_zero)
+}
+
+
+mse <- function(y, x, beta_one, beta_zero){
+  ss_res <- sum((y - beta_zero - (beta_one*x))^2, na.rm=T)
+  n <- length(y)
+  return(ss_res/(n-2))
+}
+```
+
+We compute the estimates for each regression model
+```{r}
+disp_beta_one <- beta_one_hat(mpg, disp)
+disp_beta_zero <- beta_zero_hat(mpg, disp, disp_beta_one)
+disp_mse <- mse(mpg, disp, disp_beta_one, disp_beta_zero)
+
+disp_beta_one; 
+disp_beta_zero;
+disp_mse
+```
+```{r}
+drat_beta_one <- beta_one_hat(mpg, drat)
+drat_beta_zero <- beta_zero_hat(mpg, drat, drat_beta_one)
+drat_mse <- mse(mpg, drat, drat_beta_one, drat_beta_zero)
+
+drat_beta_one; 
+drat_beta_zero;
+drat_mse
+```
+
+```{r}
+wt_beta_one <- beta_one_hat(mpg, wt)
+wt_beta_zero <- beta_zero_hat(mpg, wt, wt_beta_one)
+wt_mse <- mse(mpg, wt, wt_beta_one, wt_beta_zero)
+
+wt_beta_one; 
+wt_beta_zero;
+wt_mse
+```
+
+# Question Six
+```{r}
+confint(disp_model, level = 0.95)
+```
+
+```{r}
+confint(drat_model, level = 0.95)
+```
+
+```{r}
+confint(wt_model, level = 0.95)
+```
+
+# Question Seven
+```{r}
+plot(fitted(disp_model), residuals(disp_model), main = "Residuals vs Fitted of mpg ~ disp")
+abline(h = 0, lty=2, lwd=0.9)
+```
+```{r}
+plot(fitted(drat_model), residuals(drat_model), main = "Residuals vs Fitted of mpg ~ drat")
+abline(h = 0, lty=2, lwd=0.9)
+```
+
+```{r}
+plot(fitted(wt_model), residuals(wt_model), main = "Residuals vs Fitted of mpg ~ wt")
+abline(h = 0, lty=2, lwd=0.9)
+```
+
